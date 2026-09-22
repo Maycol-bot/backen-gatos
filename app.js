@@ -6,6 +6,7 @@ const app = express();
 // Middlewares
 app.use(cors());  //Permite peticiones desde cualquier origen
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));  //Para poder recibir datos de formularios
 
 // Rutas
 app.use(gatoRoutes);
