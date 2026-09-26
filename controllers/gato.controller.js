@@ -112,3 +112,90 @@ export const obtenerGatos = async (req, res) => {
     });
   }
 };
+
+export const actualizarGato = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, edad, peso, raza } = req.body || {};
+    const nuevaImagen = req.file;
+
+    if (!nombre || !edad || !peso || !raza) {
+      return res.status(400).json({
+        mensaje:
+          "Todos los campos son obligatorios: nombre, edad, peso y raza.",
+      });
+    }
+
+    const docRef = db.collection("gatos").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        mensaje: "Gato no encontrado.",
+      });
+    }
+
+    const datosActualizados = {
+      nombre,
+      edad: Number(edad),
+      peso: Number(peso),
+      raza,
+      fechaActualizacion: new Date().toISOString(),
+    };
+
+    if (nuevaImagen) {
+      if (!nuevaImagen.mimetype.startsWith("image/")) {
+        return res.status(400).json({
+          mensaje: "El archivo debe ser una imagen.",
+        });
+      }
+
+      const extension = nuevaImagen.originalname
+        .split(".")
+        .pop()
+        .toLowerCase();
+
+      const nombreArchivo = `gato-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2)}.${extension}`;
+
+      const rutaImagen = `gatos/${nombreArchivo}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("imagenes_gatos")
+        .upload(rutaImagen, nuevaImagen.buffer, {
+          contentType: nuevaImagen.mimetype,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        return res.status(500).json({
+          mensaje: "Error al subir la nueva imagen a Supabase.",
+          error: uploadError.message,
+        });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("imagenes_gatos")
+        .getPublicUrl(rutaImagen);
+
+      datosActualizados.imagenUrl = publicUrlData.publicUrl;
+    }
+
+    await docRef.update(datosActualizados);
+
+    res.json({
+      mensaje: `¡Gato actualizado con éxito! ID: ${id}`,
+      id,
+      imagenUrl:
+        datosActualizados.imagenUrl || doc.data().imagenUrl,
+    });
+  } catch (error) {
+    console.error("Error al actualizar:", error);
+
+    res.status(500).json({
+      mensaje: "Error al actualizar el gato.",
+      error: error.message,
+    });
+  }
+};
