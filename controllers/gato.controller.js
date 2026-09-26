@@ -3,28 +3,25 @@ import supabase from "../supabase.js";
 
 export const registrarGato = async (req, res) => {
   try {
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-
     const { nombre, edad, peso, raza } = req.body || {};
     const imagen = req.file;
 
     if (!nombre || !edad || !peso || !raza) {
       return res.status(400).json({
         mensaje:
-          "Todos los campos son obligatorios: nombre, edad, peso y raza.",
+          "Todos los campos son obligatorios: nombre, edad, peso y raza."
       });
     }
 
     if (!imagen) {
       return res.status(400).json({
-        mensaje: "La imagen del gato es obligatoria.",
+        mensaje: "La imagen del gato es obligatoria."
       });
     }
 
     if (!imagen.mimetype.startsWith("image/")) {
       return res.status(400).json({
-        mensaje: "El archivo debe ser una imagen.",
+        mensaje: "El archivo debe ser una imagen."
       });
     }
 
@@ -40,12 +37,11 @@ export const registrarGato = async (req, res) => {
 
     const rutaImagen = `gatos/${nombreArchivo}`;
 
-    // Subir imagen a Supabase
     const { error: uploadError } = await supabase.storage
       .from("imagenes_gatos")
       .upload(rutaImagen, imagen.buffer, {
         contentType: imagen.mimetype,
-        upsert: false,
+        upsert: false
       });
 
     if (uploadError) {
@@ -53,25 +49,23 @@ export const registrarGato = async (req, res) => {
 
       return res.status(500).json({
         mensaje: "Error al subir la imagen a Supabase.",
-        error: uploadError.message,
+        error: uploadError.message
       });
     }
 
-    // Obtener URL pública
     const { data: publicUrlData } = supabase.storage
       .from("imagenes_gatos")
       .getPublicUrl(rutaImagen);
 
     const imagenUrl = publicUrlData.publicUrl;
 
-    // Guardar datos en Firebase
     const docRef = await db.collection("gatos").add({
       nombre,
       edad: Number(edad),
       peso: Number(peso),
       raza,
       imagenUrl,
-      fecha: new Date().toISOString(),
+      fecha: new Date().toISOString()
     });
 
     res.status(201).json({
@@ -80,14 +74,41 @@ export const registrarGato = async (req, res) => {
         `Nombre: ${nombre} | Edad: ${edad} años | ` +
         `Peso: ${peso} kg | Raza: ${raza}`,
       id: docRef.id,
-      imagenUrl,
+      imagenUrl
     });
+
   } catch (error) {
     console.error("Error:", error);
 
     res.status(500).json({
       mensaje: "Error al registrar el gato.",
-      error: error.message,
+      error: error.message
+    });
+  }
+};
+
+
+// ==========================================
+// OBTENER TODOS LOS GATOS
+// ==========================================
+
+export const obtenerGatos = async (req, res) => {
+  try {
+    const snapshot = await db.collection("gatos").get();
+
+    const gatos = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json(gatos);
+
+  } catch (error) {
+    console.error("Error al obtener gatos:", error);
+
+    res.status(500).json({
+      mensaje: "Error al obtener los gatos.",
+      error: error.message
     });
   }
 };
