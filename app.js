@@ -1,11 +1,13 @@
 import express from "express";
 import cors from "cors";  //Para que el frontend pueda llamar
 import gatoRoutes from "./routes/gato.routes.js";
+import { capturarInfoSolicitud } from "./middlewares/auditoria.js";
 const app = express();
 
 // Middlewares
 app.use(cors());  //Permite peticiones desde cualquier origen
 app.use(express.json());
+app.use(capturarInfoSolicitud);  // Middleware para capturar información de la solicitud
 app.use(express.urlencoded({ extended: true }));  //Para poder recibir datos de formularios
 
 // Rutas
